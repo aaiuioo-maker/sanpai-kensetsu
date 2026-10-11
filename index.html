@@ -444,7 +444,9 @@ const BASE_ITEMS=[
 /* ===== 参拝の変更（スマホ内に保存） ===== */
 const BASE_YEAR=2026;
 const KEY_PREFIX='sanpai_overrides_';
-let currentYear=Math.max(BASE_YEAR, new Date().getFullYear());
+// 開いた時は「来月」を表示する（10月なら11月、12月なら翌年の1月）
+const START=(()=>{ const n=new Date(); return new Date(n.getFullYear(), n.getMonth()+1, 1); })();
+let currentYear=Math.max(BASE_YEAR, START.getFullYear());
 function loadOverrides(y){ try{ return JSON.parse(localStorage.getItem(KEY_PREFIX+y))||{}; }catch(e){ return {}; } }
 function saveOverrides(o){ try{
   if(Object.keys(o).length) localStorage.setItem(KEY_PREFIX+currentYear, JSON.stringify(o));
@@ -516,7 +518,7 @@ function dateRowHtml(label, month){
 let editingIndex=-1;
 let backupNaming=false;
 
-let currentMonth=new Date().getMonth()+1;
+let currentMonth=START.getMonth()+1;
 
 function initApp(){
   updateYearLabel();
