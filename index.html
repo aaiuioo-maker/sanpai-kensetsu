@@ -73,6 +73,7 @@ body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; bac
 .item-card { background: #FFFDE7; border-radius: 8px; padding: 6px 12px; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(184,134,11,0.12); border: 1px solid #F0E68C; display: flex; align-items: center; justify-content: space-between; transition: transform 0.1s; }
 .item-card:active { transform: scale(0.98); }
 .item-card.ireisai .item-name { color: #1a6bbf; font-weight: 700; }
+.item-card.ireisai.green .item-name { color: #2e8b3e; }   /* 慰霊祭（神様）・（祖霊様）は緑 */
 .item-left { flex: 1; display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; }
 .item-name { font-size: 14px; font-weight: 600; color: #5C3A00; }
 .item-sub { font-size: 11px; color: #B8860B; }
@@ -436,8 +437,8 @@ const BASE_ITEMS=[
   {key:'mo_sanpai', name:'MOランド参拝',    amount:5000,sub:'',                        ireisai:false},
   {key:'irei_ie',   name:'慰霊祭（家）',    amount:2000,sub:'住友家',                  ireisai:true},
   {key:'irei_kojin',name:'慰霊祭（個人）',  amount:2000,sub:'住友勇蔵・住友ハツ',      ireisai:true},
-  {key:'irei_kami', name:'慰霊祭（神様）',  amount:1000,sub:'',                        ireisai:true},
-  {key:'irei_sorei',name:'慰霊祭（祖霊様）',amount:1000,sub:'',                        ireisai:true},
+  {key:'irei_kami', name:'慰霊祭（神様）',  amount:1000,sub:'',                        ireisai:true, green:true},
+  {key:'irei_sorei',name:'慰霊祭（祖霊様）',amount:1000,sub:'',                        ireisai:true, green:true},
 ];
 
 /* ===== 参拝の変更（スマホ内に保存） ===== */
@@ -574,7 +575,7 @@ function render(month, silent){
   const done=getChecks(month);
   BASE_ITEMS.forEach(item=>{
     const isDone=done.includes(item.key);
-    html+=`<div class="item-card ${item.ireisai?'ireisai':''}${isDone?' done':''}">
+    html+=`<div class="item-card ${item.ireisai?'ireisai':''}${item.green?' green':''}${isDone?' done':''}">
       <div class="item-left">
         <div class="item-name">${item.name}</div>
         ${item.sub?`<div class="item-sub">${item.sub}</div>`:''}
