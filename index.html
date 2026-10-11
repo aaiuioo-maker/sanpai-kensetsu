@@ -77,6 +77,12 @@ body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; bac
 .item-name { font-size: 14px; font-weight: 600; color: #5C3A00; }
 .item-sub { font-size: 11px; color: #B8860B; }
 .item-amount { font-size: 15px; font-weight: 700; color: #B8860B; white-space: nowrap; }
+/* 支払い済みのチェック（一番右） */
+.check-btn { flex-shrink: 0; width: 30px; height: 30px; margin-left: 10px; border-radius: 50%; border: 2px solid #DAA520; background: #fff; color: transparent; font-size: 17px; font-weight: 700; line-height: 1; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.check-btn:active { transform: scale(0.9); }
+.item-card.done { background: #F1F8E9; border-color: #C5E1A5; }
+.item-card.done .check-btn { background: #2e8b3e; border-color: #2e8b3e; color: #fff; }
+.item-card.done .item-name, .item-card.done .item-sub, .item-card.done .item-amount { opacity: 0.45; text-decoration: line-through; }
 
 .total-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #B8860B; color: #fff; padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.15); }
 .total-bar .total-label { font-size: 13px; opacity: 0.85; }
@@ -565,13 +571,16 @@ function render(month, silent){
   }
 
   html+=`<div class="section-title">支払い一覧</div>`;
+  const done=getChecks(month);
   BASE_ITEMS.forEach(item=>{
-    html+=`<div class="item-card ${item.ireisai?'ireisai':''}">
+    const isDone=done.includes(item.key);
+    html+=`<div class="item-card ${item.ireisai?'ireisai':''}${isDone?' done':''}">
       <div class="item-left">
         <div class="item-name">${item.name}</div>
         ${item.sub?`<div class="item-sub">${item.sub}</div>`:''}
       </div>
       <div class="item-amount">¥${item.amount.toLocaleString()}</div>
+      <button class="check-btn" data-act="check" data-key="${item.key}" aria-pressed="${isDone}" aria-label="${item.name}を${isDone?'未払いに戻す':'支払い済みにする'}">✓</button>
     </div>`;
   });
 
@@ -611,7 +620,12 @@ document.getElementById('mainContent').addEventListener('click',function(e){
   const b=e.target.closest('button[data-act]');
   if(!b) return;
   const act=b.dataset.act;
-  if(act==='edit'){
+  if(act==='check'){
+    const list=getChecks(currentMonth);
+    const k=b.dataset.key, i=list.indexOf(k);
+    if(i<0){ list.push(k); playSanpaiSound(); } else { list.splice(i,1); playMonthSound(currentMonth); }
+    setChecks(currentMonth,list); render(currentMonth,true);
+  } else if(act==='edit'){
     editingIndex=+b.dataset.i; render(currentMonth,true);
     const inp=document.getElementById('ev-name'); if(inp) inp.focus();
   } else if(act==='cancel'){
@@ -641,6 +655,16 @@ document.getElementById('mainContent').addEventListener('click',function(e){
     editingIndex=-1; render(currentMonth,true);
   }
 });
+
+/* ===== 支払い済みのチェック（年と月ごとにスマホ内に保存） ===== */
+const CHECK_KEY='sanpai_checks';
+function loadAllChecks(){ try{ return JSON.parse(localStorage.getItem(CHECK_KEY))||{}; }catch(e){ return {}; } }
+function getChecks(month){ const v=loadAllChecks()[currentYear+'-'+month]; return Array.isArray(v)?v.slice():[]; }
+function setChecks(month,list){
+  const all=loadAllChecks(), k=currentYear+'-'+month;
+  if(list.length) all[k]=list; else delete all[k];
+  try{ localStorage.setItem(CHECK_KEY, JSON.stringify(all)); }catch(e){}
+}
 
 /* ===== 年の切り替え ===== */
 function updateYearLabel(){
@@ -673,7 +697,7 @@ function collectData(){
       }
     }
   }catch(e){}
-  return {app:'sanpai-kensetsu', version:1, savedAt:new Date().toISOString(), years};
+  return {app:'sanpai-kensetsu', version:1, savedAt:new Date().toISOString(), years, checks:loadAllChecks()};
 }
 function defaultBackupName(){
   const d=new Date();
@@ -713,6 +737,8 @@ document.getElementById('restoreFile').addEventListener('change',function(){
       for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.startsWith(KEY_PREFIX)) old.push(k); }
       old.forEach(k=>localStorage.removeItem(k));
       Object.entries(data.years).forEach(([y,o])=>{ if(/^\d{4}$/.test(y) && o && typeof o==='object') localStorage.setItem(KEY_PREFIX+y, JSON.stringify(o)); });
+      // 支払い済みのチェック（古いバックアップには無いので、その時は今のチェックを残す）
+      if(data.checks && typeof data.checks==='object') localStorage.setItem(CHECK_KEY, JSON.stringify(data.checks));
     }catch(e){ toast('復元できませんでした'); return; }
     overrides=loadOverrides(currentYear); editingIndex=-1;
     render(currentMonth,true); playSanpaiSound();
