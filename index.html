@@ -85,6 +85,23 @@ body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; bac
 .item-card.done .check-btn { background: #2e8b3e; border-color: #2e8b3e; color: #fff; }
 .item-card.done .item-name, .item-card.done .item-sub, .item-card.done .item-amount { opacity: 0.45; text-decoration: line-through; }
 
+/* ===== 献金袋の見本（ボタンと、画面いっぱいの画像。横にスライドして切り替え） ===== */
+.guide-btn { display: block; width: 100%; margin-top: 8px; padding: 11px; background: #FFF3C4; border: 1.5px solid #DAA520; border-radius: 10px; color: #7B4800; font-size: 14px; font-weight: 700; letter-spacing: 1px; font-family: inherit; cursor: pointer; }
+.guide-btn:active { transform: scale(0.98); }
+#guideView { display: none; position: fixed; inset: 0; z-index: 5000; background: #ffffff; flex-direction: column; }
+#guideView.show { display: flex; }
+.guide-slider { flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-top: env(safe-area-inset-top); }
+.guide-slider::-webkit-scrollbar { display: none; }
+/* 1枚ずつ横幅いっぱい。画面に入りきらないときは上下にスクロール */
+.guide-slide { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; align-items: center; }
+.guide-slide img { display: block; width: 100%; height: auto; margin: auto 0; }
+.guide-dots { display: flex; justify-content: center; gap: 8px; padding: 8px 0 2px; }
+.guide-dots span { width: 9px; height: 9px; border-radius: 50%; background: #E5D9B0; transition: background 0.2s; }
+.guide-dots span.on { background: #B8860B; }
+.guide-hint { text-align: center; font-size: 12px; color: #9B6200; }
+.guide-close { flex-shrink: 0; margin: 8px 12px calc(10px + env(safe-area-inset-bottom)); padding: 14px; border: none; border-radius: 12px; background: #B8860B; color: #ffffff; font-size: 16px; font-weight: 700; letter-spacing: 2px; font-family: inherit; cursor: pointer; }
+.guide-close:active { transform: scale(0.98); }
+
 .total-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #B8860B; color: #fff; padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.15); }
 .total-bar .total-label { font-size: 13px; opacity: 0.85; }
 .total-bar .total-amount { font-size: 19px; font-weight: 700; }
@@ -329,6 +346,16 @@ body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; bac
   <div class="content" id="mainContent"></div>
   <input type="file" id="restoreFile" accept=".json,application/json" style="display:none">
   <div id="toast"></div>
+  <!-- 献金袋の見本（画面いっぱい。横にスライドして2枚を切り替え） -->
+  <div id="guideView">
+    <div class="guide-slider" id="guideSlider">
+      <div class="guide-slide"><img src="mihon1.jpg" alt="献金袋の見本（参拝御礼・会費）"></div>
+      <div class="guide-slide"><img src="mihon2.jpg" alt="慰霊祭申込の見本"></div>
+    </div>
+    <div class="guide-dots" id="guideDots"><span class="on"></span><span></span></div>
+    <div class="guide-hint">← 横にスライドで切り替え →</div>
+    <button class="guide-close" id="guideClose">画像を閉じる</button>
+  </div>
   <div class="total-bar">
     <span class="total-label">今月の合計</span>
     <span class="total-amount" id="totalAmount"></span>
@@ -689,6 +716,7 @@ function render(month, silent){
       <button class="check-btn" data-act="check" data-key="${item.key}" aria-pressed="${isDone}" aria-label="${item.name}を${isDone?'未払いに戻す':'支払い済みにする'}">✓</button>
     </div>`;
   });
+  html+=`<button class="guide-btn" data-act="guide">📖 献金袋の見本を見る</button>`;
 
   if(backupNaming){
     html+=`<div class="backup-form">
@@ -754,6 +782,8 @@ document.getElementById('mainContent').addEventListener('click',function(e){
     const name=cleanFileName(document.getElementById('bk-name').value);
     backupNaming=false; render(currentMonth,true);
     doBackup(name);
+  } else if(act==='guide'){
+    openGuide();
   } else if(act==='restore'){
     document.getElementById('restoreFile').click();
   } else if(act==='reset'){
@@ -761,6 +791,25 @@ document.getElementById('mainContent').addEventListener('click',function(e){
     editingIndex=-1; render(currentMonth,true);
   }
 });
+
+/* ===== 献金袋の見本を開く・閉じる（横スライドで2枚） ===== */
+const guideView=document.getElementById('guideView');
+const guideSlider=document.getElementById('guideSlider');
+const guideDots=[...document.querySelectorAll('#guideDots span')];
+function openGuide(){
+  guideView.classList.add('show');
+  guideSlider.scrollLeft=0;
+  guideSlider.querySelectorAll('.guide-slide').forEach(s=>s.scrollTop=0);
+  guideDots.forEach((d,i)=>d.classList.toggle('on',i===0));
+  playSanpaiSound();
+}
+function closeGuide(){ guideView.classList.remove('show'); playMonthSound(currentMonth); }
+document.getElementById('guideClose').addEventListener('click',closeGuide);
+// 今何枚目かを下の点で知らせる
+guideSlider.addEventListener('scroll',()=>{
+  const i=Math.round(guideSlider.scrollLeft/guideSlider.clientWidth);
+  guideDots.forEach((d,k)=>d.classList.toggle('on',k===i));
+},{passive:true});
 
 /* ===== 支払い済みのチェック（年と月ごとにスマホ内に保存） ===== */
 const CHECK_KEY='sanpai_checks';
